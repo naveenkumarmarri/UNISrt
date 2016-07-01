@@ -6,7 +6,7 @@ import sys
 import threading
 from time import sleep, time
 
-import kernel.models as models
+import runtime.models.models as models
 from services.forecaster import forecaster
 from libnre.utils import *
 
@@ -345,7 +345,7 @@ def run(unisrt, args):
     faultlocator.loop()
     
 if __name__ == '__main__':
-    import kernel.unisrt
-    unisrt = kernel.unisrt.UNISrt()
+    import runtime.unisrt
+    unisrt = runtime.unisrt.UNISrt()
     faultlocator = Faultlocator(unisrt, '/home/mzhang/workspace/nre/apps/beacon/beacon.conf')
     faultlocator.loop()

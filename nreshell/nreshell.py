@@ -6,7 +6,7 @@ import threading
 import pkgutil
 from graph_tool.all import Graph, graph_draw
 
-import kernel.unisrt
+from runtime.unisrt import UNISrt
 from libnre.utils import *
 
 class NREShell(cmd.Cmd):
@@ -14,7 +14,7 @@ class NREShell(cmd.Cmd):
     def __init__(self):
         # before I could ever implement the runtime environment as a separate
         # stand alone daemon, it'd be an object of the shell
-        self.unisrt = kernel.unisrt.UNISrt()        
+        self.unisrt = UNISrt()
         
         self.prompt = '> '
         cmd.Cmd.__init__(self)
@@ -27,7 +27,7 @@ class NREShell(cmd.Cmd):
         if model in self.unisrt._resources:
             print "model {m} has following instances:".format(m = model)
             model_objects = getattr(self.unisrt, model)
-            for instance in model_objects['existing']:
+            for instance in model_objects:
                 print instance
         else:
             print "Please input a model name from:"

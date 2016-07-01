@@ -1,30 +1,44 @@
 import threading
-import validictory
 from time import time
 from copy import deepcopy
 from graph_tool.all import Graph
 from websocket import create_connection
+from collections import defaultdict
 
-import unis_client
-import settings as nre_settings
-from schema_cache import SchemaCache
-from models import *
-from libnre.utils import *
+import settings
+from runtime.rest.unis_client import UNISInstance, REST_EP_MAP
+from runtime.models import *
+from runtime.utils import *
 
-logger = nre_settings.get_logger('unisrt')
+logger = settings.get_logger('unisrt')
 
 # map name strings to class objects
 resources_classes = {
-    "domains": domain,
-    "nodes": node,
-    "ports": port,
-    "ipports": ipport,
-    "links": link,
-    "services": service,
-    "paths": path,
-    "measurements": measurement,
-    "metadata": metadata
+    "domains": Domain,
+    "nodes": Node,
+    "ports": Port,
+    "links": Link,
+    "services": Service,
+    "paths": Path,
+    "measurements": Measurement,
+    "metadata": Metadata,
+    "exnodes": Exnode,
+    "extents": Extent
 }
+
+class RTResource(list):
+    def __init__(self, indexes):
+        super(RTResource, self).__init__()
+        assert(isinstance(indexes, list))
+        self._indexes = indexes
+        for ind in indexes:
+            setattr(self, ind, defaultdict())
+
+    def __str__(self):
+        return super(RTResource, self).__str__()
+
+    def filter(self, prop, val):
+        return filter(lambda x: getattr(x, prop)==val, self)
 
 class UNISrt(object):
     '''
@@ -35,32 +49,24 @@ class UNISrt(object):
     will maintain it consistent in a best-effort manner).
     '''
     
-    # should move following to methods to utils
-    def validate_add_defaults(self, data):
-        if "$schema" not in data:
-            return None
-        schema = self._schemas.get(data["$schema"])
-        validictory.validate(data, schema)
-        add_defaults(data, schema)
-    
     def __init__(self):
         logger.info("starting UNIS Network Runtime Environment...")
-        fconf = get_file_config(nre_settings.CONFIGFILE)
-        self.conf = deepcopy(nre_settings.STANDALONE_DEFAULTS)
+        fconf = get_file_config(settings.CONFIGFILE)
+        self.conf = deepcopy(settings.STANDALONE_DEFAULTS)
         merge_dicts(self.conf, fconf)
         
         self.unis_url = str(self.conf['properties']['configurations']['unis_url'])
         self.ms_url = str(self.conf['properties']['configurations']['ms_url'])
-        self._unis = unis_client.UNISInstance(self.conf)
         self.time_origin = int(time())
-        
-        self._schemas = SchemaCache()
+
+        self._unis = UNISInstance(self.conf)
+        self._subunisclient = {}
+
         self._resources = self.conf['resources']
         
-        self._subunisclient = {}
-        
+        self._def_indexes = ["id"]
         for resource in self._resources:
-            setattr(self, resource, {'new': {}, 'existing': {}})
+            setattr(self, resource, RTResource(self._def_indexes))
         
         # construct the hierarchical representation of the network
         for resource in self._resources:
@@ -71,14 +77,29 @@ class UNISrt(object):
         # construct the graph representation of the network, of which this NRE is in charge
         self.g = Graph()
         self.nodebook = {}
-        for key in self.nodes['existing'].keys():
-            self.nodebook[key] = self.g.add_vertex()
-        
-        for key, link in self.links['existing'].iteritems():
-            if hasattr(link, 'src') and hasattr(link, 'dst'):
-                self.g.add_edge(self.nodebook[link.src.node.selfRef],\
-                                self.nodebook[link.dst.node.selfRef], add_missing=False)
-        
+        #for key in self.nodes['existing'].keys():
+        #    self.nodebook[key] = self.g.add_vertex()
+        #
+        #for key, link in self.links['existing'].iteritems():
+        #    if hasattr(link, 'src') and hasattr(link, 'dst'):
+        #        self.g.add_edge(self.nodebook[link.src.node.selfRef],\
+        #                        self.nodebook[link.dst.node.selfRef], add_missing=False)
+
+    def insert(self, resource, sync=False):
+        resource.validate()
+        res_name = REST_EP_MAP[resource._schema_uri]
+        res = getattr(self, res_name)
+        res.append(resource)
+        if sync:
+            url = "{0}/{1}".format(self.unis_url, res_name)
+            self._unis.post(url, resource.as_dict())
+    
+    def delete(self, resource, sync=False):
+        pass
+
+    def update(self, resource, sync=False):
+        pass
+
     def pullRuntime(self, mainrt, currentclient, data, resource_name, localnew):
         '''
         this function should convert the input data into Python runtime objects
@@ -109,14 +130,12 @@ class UNISrt(object):
             # sorting: in unisrt res dictionaries, a newer record of same index will be saved
             data.sort(key=lambda x: x.get('ts', 0), reverse=False)
             for v in data:
-                model(v, mainrt, currentclient, localnew)
+                res = getattr(self, resource_name)
+                res.append(model(v))
                 
-            threading.Thread(name=resource_name + '@' + currentclient.config['unis_url'],\
-                             target=self.subscribeRuntime, args=(resource_name, self._unis,)).start()
+            #threading.Thread(name=resource_name + '@' + currentclient.config['unis_url'],\
+            #                 target=self.subscribeRuntime, args=(resource_name, self._unis,)).start()
             
-                
-                
-        
     def pushRuntime(self, resource_name):
         '''
         this function upload specified resource to UNIS
@@ -128,18 +147,9 @@ class UNISrt(object):
             if hasattr(entry, 'ts'):
                 url = '/' + resource_name + '/' + getattr(entry, 'id')
                 data = entry.prep_schema()
-                
-                
-                
-                
-                
+
                 self._unis.put(url, data)
-                
-                
-                
-                
-                
-                # the put() function may not do pubsub, so change to existing manually
+#                the put() function may not do pubsub, so change to existing manually
 #                if k in getattr(self, resource_name)['existing'] and isinstance(getattr(self, resource_name)['existing'][k], list):
 #                    getattr(self, resource_name)['existing'][k].append(entry)
 #                else:
@@ -148,10 +158,6 @@ class UNISrt(object):
             else:
                 url = '/' + resource_name
                 data = entry.prep_schema()
-                
-                
-                
-                
                 
                 ret = self._unis.post(url, data)
                 '''
@@ -162,9 +168,7 @@ class UNISrt(object):
                 ret = su.post(url, data)
                 a = ret
                 '''
-                
-                
-                
+
         while True:
             try:
                 key, value = getattr(self, resource_name)['new'].popitem()

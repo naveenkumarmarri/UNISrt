@@ -1,7 +1,7 @@
 import requests
-import settings
 import pprint
 import json
+import settings
 
 logger = settings.get_logger('http')
 

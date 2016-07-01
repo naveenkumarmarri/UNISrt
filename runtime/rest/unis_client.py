@@ -3,6 +3,13 @@ from periscope_client import PeriscopeClient
 
 logger = settings.get_logger('unis_client')
 
+REST_EP_MAP = {}
+for key,value in settings.SCHEMAS.iteritems():
+    if key is "data":
+        REST_EP_MAP[value] = "{k}".format(k=key)
+    else:
+        REST_EP_MAP[value] = "{k}s".format(k=key)
+
 class UNISInstance:
     def __init__(self, service):
         self.service = service

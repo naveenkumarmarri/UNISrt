@@ -24,6 +24,8 @@ def ToBin(ipv4):
         return binary[:int(splited[1])]
         
 def get_file_config(filepath):
+    if not filepath:
+        return {}
     try:
         with open(filepath) as f:
             conf = f.read()

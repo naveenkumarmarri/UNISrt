@@ -5,7 +5,7 @@ import datetime, dateutil, pytz
 from time import sleep, time
 from requests.exceptions import ConnectionError
 
-from kernel.models import measurement, metadata
+from runtime.models.models import measurement, metadata
 from libnre.utils import *
 
 logger = settings.get_logger('forecaster')
