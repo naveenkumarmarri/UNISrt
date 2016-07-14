@@ -82,39 +82,28 @@ MIME = {
 # Logging configuration
 ##################################################################
 import logging
-from netlogger import nllog
 
 DEBUG = False
 TRACE = False
 
-NETLOGGER_NAMESPACE = "unisrt"
+LOGGER_NAMESPACE = "unisrt"
 
 def config_logger():
-    """Configures netlogger"""
-    nllog.PROJECT_NAMESPACE = NETLOGGER_NAMESPACE
-    #logging.setLoggerClass(nllog.PrettyBPLogger)
-    logging.setLoggerClass(nllog.BPLogger)
-    log = logging.getLogger(nllog.PROJECT_NAMESPACE)
+    log = logging.getLogger(LOGGER_NAMESPACE)
     handler = logging.StreamHandler()
     handler.setFormatter(logging.Formatter("%(message)s"))
     log.addHandler(handler)
     # set level
     if TRACE:
-        log_level = (logging.WARN, logging.INFO, logging.DEBUG,
-                     nllog.TRACE)[3]
+        log_level = logging.TRACE
     elif DEBUG:
-        log_level = (logging.WARN, logging.INFO, logging.DEBUG,
-                     nllog.TRACE)[2]
-
+        log_level = logging.DEBUG
     else:
-        log_level = (logging.WARN, logging.INFO, logging.DEBUG,
-                     nllog.TRACE)[1]
+        log_level = logging.WARN
     log.setLevel(log_level)
 
-def get_logger(namespace=NETLOGGER_NAMESPACE):
+def get_logger(namespace=LOGGER_NAMESPACE):
     """Return logger object"""
-    # Test if netlogger is initialized
-    if nllog.PROJECT_NAMESPACE != NETLOGGER_NAMESPACE:
-        config_logger()
-    return nllog.get_logger(namespace)
+    config_logger()
+    return logging.getLogger(namespace)
 

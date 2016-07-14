@@ -2,12 +2,9 @@ import os
 import time
 import json
 import uuid
+import importlib
 import jsonschema
 import httplib2
-import six
-import inflection
-import inspect
-import python_jsonschema_objects as pjo
 
 from settings import SCHEMAS, JSON_SCHEMA_SCHEMA, JSON_SCHEMA_HYPER, \
     JSON_SCHEMA_LINKS, JSON_SCHEMAS_ROOT, SCHEMAS_LOCAL, SCHEMA_CACHE_DIR
@@ -22,10 +19,7 @@ CACHE = {
     JSON_SCHEMA_HYPER: HYPER_SCHEMA,
     JSON_SCHEMA_LINKS: HYPER_LINKS_SCHEMA,
 }
-
-# control use of python-jsonschema-objects
-kw = {'pjo': False}
-
+    
 class HyperLinkNotFound(Exception):
     pass
 
@@ -59,7 +53,7 @@ class ObjectDict(dict):
         data = data or {}
         super(ObjectDict, self).__init__(data)
         if _set_attributes:
-            for key, value in data.iteritems():
+            for key, value in data.items():
                 if not hasattr(self, key):
                     self._add_property(key)
                 self._set_property(key, value)
@@ -106,15 +100,15 @@ class ObjectDict(dict):
         self._del_property(name)
     
     def __iter__(self):
-        for key in self.iterkeys():
+        for key in self.keys():
             yield key
     
     def iteritems(self):
-        for key in self.iterkeys():
+        for key in self.keys():
             yield key, self[key]
     
     def itervalues(self):
-        for key in self.iterkeys():
+        for key in self.keys():
             yield self[key]
         
     def _value_converter(self, value, name=None):
@@ -152,7 +146,6 @@ class ObjectDict(dict):
                 self._set_property(name, value)
         return value
 
-
 def schemaMetaFactory(name, schema, extends=None):
     assert isinstance(schema, dict), "schema is not of type dict."
     parent = extends or type
@@ -163,7 +156,7 @@ def schemaMetaFactory(name, schema, extends=None):
                 fget = lambda self: self._get_property(name)
                 fset = lambda self, v: self._set_property(name, v)
                 fdel = lambda self: self._del_property(name)
-                return  property(fget, fset, fdel, doc=doc)
+                return property(fget, fset, fdel, doc=doc)
             
             newtype = super(SchemaMetaClass, meta).__new__(meta, classname, bases, classDict)
             if "description" in schema:
@@ -185,49 +178,6 @@ def schemaMetaFactory(name, schema, extends=None):
             return newtype
     return SchemaMetaClass
 
-def pjo_setattr(self, name, val):
-    """
-    annoying hackery due to python-jsonschema-object property lookups
-    https://github.com/cwacek/python-jsonschema-objects/blob/master/python_jsonschema_objects/classbuilder.py#L180
-    PJO code does not allow for inheritance, so redefine and detect that case here.
-    """
-    USO_MRO_DEPTH = 8
-
-    if name.startswith("_"):
-        object.__setattr__(self, name, val)
-    elif name in self.__propinfo__:
-        # If its in __propinfo__, then it actually has a property defined.
-        # The property does special validation, so we actually need to
-        # run its setter. We get it from the class definition and call
-        # it directly. XXX Heinous.
-        base = self.__class__
-        ind = len(inspect.getmro(base)) - USO_MRO_DEPTH
-        while ind:
-            base = base.__bases__[0]
-            ind -= 1
-        prop = base.__dict__[self.__prop_names__[name]]
-        prop.fset(self, val)
-    else:
-        # This is an additional property of some kind
-        typ = getattr(self, '__extensible__', None)
-        if typ is False:
-            raise validators.ValidationError(
-                "Attempted to set unknown property '{0}', "
-                "but 'additionalProperties' is false.".format(name))
-        if typ is True:
-            # There is no type defined, so just make it a basic literal
-            # Pick the type based on the type of the values
-            valtype = [k for k, t in six.iteritems(self.__SCHEMA_TYPES__)
-                       if t is not None and isinstance(val, t)]
-            valtype = valtype[0]
-            val = MakeLiteral(name, valtype, val)
-        elif isinstance(typ, type) and getattr(typ, 'isLiteralClass', None) is True:
-            val = typ(val)
-        elif isinstance(typ, type) and util.safe_issubclass(typ, ProtocolBase):
-            val = typ(**util.coerce_for_expansion(val))
-            
-        self._extended_properties[name] = val
-            
 class JSONSchemaModel(ObjectDict):
     """Creates a class type based on JSON Schema."""
     
@@ -248,18 +198,18 @@ class JSONSchemaModel(ObjectDict):
             "set_defaults is not of type bool."
         assert isinstance(schemas_loader, (SchemasLoader, type(None))), \
             "schemas_loader is not of type Schemas or None."
+        
+        data = data or {}
+        dict.__init__(self, data)
 
         self._set_defaults = set_defaults
         if set_defaults:
             if not "$schema" in data:
                 data["$schema"] = self._schema_uri
         
-        data = data or {}
-        dict.__init__(self, data)
-        
         setattr(self, "_$schemas_loader", schemas_loader)
         
-        for key, value in data.iteritems():
+        for key, value in data.items():
             if not hasattr(self, key):
                 prop_type = self._get_property_type(key) or {}
                 doc = prop_type.get("description", None)
@@ -348,7 +298,7 @@ class JSONSchemaModel(ObjectDict):
         return json.dumps(self)
 
     def as_dict(self):
-        return self
+        return dict(self)
 
     @staticmethod
     def json_model_factory(name, schema, extends=None, **kwargs):
@@ -389,21 +339,25 @@ class SchemasLoader(object):
         """Return a class type of JSONSchemaModel based on schema."""
         if schema_uri in self.__CLASSES_CACHE__:
             return self.__CLASSES_CACHE__[schema_uri]
+
         schema = self.get(schema_uri)
         class_name = class_name or str(schema.get("name", None))
         if not class_name:
             raise AttributeError(
                 "class_name is defined and the schema has not 'name'.")
 
-        if kwargs.get("pjo", False):
-            builder = pjo.ObjectBuilder(schema)
-            ns = builder.build_classes()
-            nm = inflection.parameterize(six.text_type(schema_uri), '_')
-            cls = getattr(ns, inflection.camelize(nm))
-            cls.__setattr__ = pjo_setattr
-        else:
-            cls = JSONSchemaModel.json_model_factory(class_name, schema, extends,
-                                                     *args, **kwargs)
+        # TODO: this only handles single inheritance based on 'allOf' attribute
+        cls = None
+        allof = schema.get("allOf", None)
+        if allof:
+            for r in allof:
+                if "$ref" in r:
+                    cls = self.get_class(r["$ref"])
+                    self.set_class(schema_uri, cls)
+
+        extends = cls or extends
+        cls = JSONSchemaModel.json_model_factory(class_name, schema, extends,
+                                                 *args, **kwargs)
         self.set_class(schema_uri, cls)
         return cls
     
@@ -422,62 +376,28 @@ class SchemasHTTPLib2(SchemasLoader):
      
     def _load_schema(self, uri):
         resp, content = self._http.request(uri, "GET")
-        self.__CACHE__[uri] = json.loads(content)
+        self.__CACHE__[uri] = json.loads(content.decode())
         return self.__CACHE__[uri]
 
-# Load a locally stored copy of the schemas if requested
+"""Load a locally stored copy of the schemas if requested."""
 if SCHEMAS_LOCAL:
-    for s in SCHEMAS.iterkeys():
+    for s in SCHEMAS.keys():
         try:
             CACHE[SCHEMAS[s]] = json.loads(open(JSON_SCHEMAS_ROOT + "/" + s).read())
         except Exception as e:
-            print "Error loading cached schema for %s: %s" % (s, e)
+            print("Error loading cached schema for {0}: {1}".formaet(e, s))
 
 http_client = httplib2.Http(SCHEMA_CACHE_DIR)
 schemaLoader = SchemasHTTPLib2(http_client, cache=CACHE)
 
-JSONSchema = schemaLoader.get_class(
-    JSON_SCHEMA_SCHEMA, "JSONSchema", **kw)
-HyperSchema = schemaLoader.get_class(
-    JSON_SCHEMA_HYPER, "HyperSchema", **kw)
-HyperLink = schemaLoader.get_class(
-    JSON_SCHEMA_LINKS, "HyperLink", **kw)
+JSONSchema = schemaLoader.get_class(JSON_SCHEMA_SCHEMA, "JSONSchema")
+HyperSchema = schemaLoader.get_class(JSON_SCHEMA_HYPER, "HyperSchema")
+HyperLink = schemaLoader.get_class(JSON_SCHEMA_LINKS, "HyperLink")
 
-# Load the basic Network Resources defined by UNIS
-NetworkResourceMeta = schemaMetaFactory("NetworkResourceMeta",
-                                        schema=schemaLoader.get(SCHEMAS["networkresource"]))
-MetadataMeta = schemaMetaFactory("MetadataMeta",
-                                 schema=schemaLoader.get(SCHEMAS["metadata"]))
-
-if kw.get("pjo", False):
-    NetworkResource = schemaLoader.get_class(SCHEMAS["networkresource"], extends=None, **kw)
-else:
-    class NetworkResource(JSONSchemaModel):
-        __metaclass__ = NetworkResourceMeta
-        def __init__(self, data=None, set_defaults=True, schemas_loader=None,
-                     auto_id=True, auto_ts=True):
-            JSONSchemaModel.__init__(self, 
-                                     data=data,
-                                     set_defaults=set_defaults,
-                                     schemas_loader=schemas_loader
-                                     )
-            if auto_id:
-                self.id = self.id or str(uuid.uuid4())
-            if auto_ts:
-                self.ts = self.ts or int(time.time() * 1000000)
-
-Topology = schemaLoader.get_class(SCHEMAS["topology"], extends=NetworkResource, **kw)
-Domain = schemaLoader.get_class(SCHEMAS["domain"], extends=NetworkResource, **kw)
-Network = schemaLoader.get_class(SCHEMAS["network"], extends=NetworkResource, **kw)
-Node = schemaLoader.get_class(SCHEMAS["node"], extends=NetworkResource, **kw)
-Port = schemaLoader.get_class(SCHEMAS["port"], extends=NetworkResource, **kw)
-Link = schemaLoader.get_class(SCHEMAS["link"], extends=NetworkResource, **kw)
-Path = schemaLoader.get_class(SCHEMAS["path"], extends=NetworkResource, **kw)
-Service = schemaLoader.get_class(SCHEMAS["service"], extends=NetworkResource, **kw)
-Measurement = schemaLoader.get_class(SCHEMAS["measurement"], extends=NetworkResource, **kw)
-Datum = schemaLoader.get_class(SCHEMAS["datum"], extends=None, **kw)
-Data = schemaLoader.get_class(SCHEMAS["data"], extends=None, **kw)
-Metadata = schemaLoader.get_class(SCHEMAS["metadata"], extends=None, **kw)
-Exnode = schemaLoader.get_class(SCHEMAS["exnode"], extends=None, **kw)
-Extent = schemaLoader.get_class(SCHEMAS["extent"], extends=None, **kw)
-Manifest = schemaLoader.get_class(SCHEMAS["manifest"], extends=None, **kw)
+"""
+Add each schema object as an attribute of this module
+The name of each attribute is taken from the schema 'name' field
+"""
+for key, value in SCHEMAS.items():
+    cls = schemaLoader.get_class(SCHEMAS[key], extends=None)
+    vars()[cls.__name__] = cls
