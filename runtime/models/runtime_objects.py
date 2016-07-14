@@ -1,3 +1,4 @@
+import inspect
 from settings import SCHEMAS
 from . import schema_objects as uso
 
@@ -21,6 +22,7 @@ def __repr(self):
 for key, value in SCHEMAS.items():
     parent = getattr(uso, key)
     cls = type(key, (parent, ), {})
+    cls.__module__ = __name__
     cls.__str__  = __str_name
     cls.__repr__ = __repr
     vars()[key] = cls
