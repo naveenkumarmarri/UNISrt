@@ -1,14 +1,17 @@
 #!/usr/bin/env python
 
 from pprint import pprint
-from runtime.models import Node, Exnode
+from runtime.models import Node, Exnode, Extent
 from runtime.unisrt import UNISrt
+import uuid
 
 rt = UNISrt()
 
+myid = str(uuid.uuid4())
+
 exdata = {
     "mode": "file",
-    "id": "blah",
+    "id": myid,
     "name": "my_test_file",
     "size": 5555,
     "created": 1234,
@@ -21,7 +24,7 @@ exdata = {
         {
             "$schema": "http://unis.crest.iu.edu/schema/exnode/4/extent#",
             "parent": {
-                "href": "#/blah",
+                "href": "#/"+myid,
                 "rel": "full"
             },
             "lifetimes": [
@@ -45,10 +48,26 @@ exdata = {
 test = Exnode()
 
 ex = Exnode(data=exdata)
+ext = Extent()
 
 pprint (ex.as_dict())
 print (type(ex.extents[0]))
+print (type(ext))
 
 rt.insert(ex, sync=True)
 exs = rt.exnodes.filter("name", "my_test_file")
-print (exs)
+print (exs, rt.extents)
+
+# test validation
+ex.permission = "77"
+try:
+    rt.insert(ex, sync=False)
+except Exception as e:
+    print ("Validation error: %s" % e)
+
+# the extent is now invalud
+ex.extents[0].offset = "blah"
+try:
+    rt.insert(ex, sync=False)
+except Exception as e:
+    print ("Validation error: %s" % e)

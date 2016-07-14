@@ -5,25 +5,21 @@ from websocket import create_connection
 from collections import defaultdict
 
 import settings
-from runtime.rest.unis_client import UnisClient, REST_EP_MAP
-from runtime.models.runtime_objects import *
+import runtime.models.runtime_objects as rto
+from runtime.rest.unis_client import UnisClient
 from runtime.utils import *
 
 logger = settings.get_logger('unisrt')
 
-# map name strings to class objects
-resources_classes = {
-    "domains": Domain,
-    "nodes": Node,
-    "ports": Port,
-    "links": Link,
-    "services": Service,
-    "paths": Path,
-    "measurements": Measurement,
-    "metadata": Metadata,
-    "exnodes": Exnode,
-    "extents": Extent
-}
+resource_classes = {}
+RT_OBJECT_MAP = {}
+for key,value in settings.SCHEMAS.items():
+    if key is "data":
+        res = "{k}".format(k=key).lower()
+    else:
+        res = "{k}s".format(k=key).lower()
+    RT_OBJECT_MAP[value] = res
+    resource_classes[res] = getattr(rto, key)
 
 class RTResource(list):
     def __init__(self, indexes):
@@ -73,7 +69,7 @@ class UNISrt(object):
 
     def insert(self, resource, sync=False):
         resource.validate()
-        res_name = REST_EP_MAP[resource._schema_uri]
+        res_name = RT_OBJECT_MAP[resource._schema_uri]
         res = getattr(self, res_name)
         res.append(resource)
         if sync:
@@ -89,7 +85,7 @@ class UNISrt(object):
         '''
         this function should convert the input data into Python runtime objects
         '''
-        model = resources_classes[resource_name]
+        model = resource_classes[resource_name]
         
         if data and isinstance(data, list):
             # sorting: in unisrt res dictionaries, a newer record of same index will be saved

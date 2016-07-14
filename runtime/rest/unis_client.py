@@ -8,13 +8,6 @@ from settings import SCHEMAS, MIME, get_logger
 
 log = get_logger('unis_client')
 
-REST_EP_MAP = {}
-for key,value in SCHEMAS.items():
-    if key is "data":
-        REST_EP_MAP[value] = "{k}".format(k=key)
-    else:
-        REST_EP_MAP[value] = "{k}s".format(k=key)
-
 class UnisClient(object):
     def __init__(self, url, **kwargs):
         re_str = 'http[s]?://(?P<host>[^:/]+)(?::(?P<port>[0-9]{1,4}))$'

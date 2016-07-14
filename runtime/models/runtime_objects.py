@@ -1,58 +1,39 @@
+from settings import SCHEMAS
 from . import schema_objects as uso
 
 """
 Here we may specialize each UNIS object for the runtime
+Each runtime class is defined by keys in the SCHEMAS dict
+and inherits from the underlying JSON schema objects
 """
 
-class Topology(uso.Topology):
-    pass
+def __str_name(self):
+    return "<{0} {1}>".format(self.__class__.__name__,
+                              self.name)
 
-class Domain(uso.Domain):
-    pass
+def __str_location(self):
+    return "<{0} {1}>".format(self.__class__.__name__,
+                              self.location)
 
-class Network(uso.Network):
-    pass
+def __repr(self):
+    return self.__str__()
 
-class Node(uso.Node):
-    pass
+for key, value in SCHEMAS.items():
+    parent = getattr(uso, key)
+    cls = type(key, (parent, ), {})
+    cls.__str__  = __str_name
+    cls.__repr__ = __repr
+    vars()[key] = cls
 
-class Port(uso.Port):
-    pass
-
-class Link(uso.Link):
-    pass
-
-class Path(uso.Path):
-    pass
-
-class Service(uso.Service):
-    pass
-
-class Measurement(uso.Measurement):
-    pass
-
-class Datum(uso.Datum):
-    pass
-
-class Data(uso.Data):
-    pass
-
-class Metadata(uso.Metadata):
-    pass
-
-class Exnode(uso.Exnode):
-    def __str__(self):
-        return "<Exnode {exp}>".format(exp=self.name)
-
-    def __repr__(self):
-        return self.__str__()
-
-class Extent(uso.Extent):
-    def __str__(self):
-        return "<Extent {exp}>".format(exp=self.location)
-
-    def __repr__(self):
-        return self.__str__()
-
-class Manifest(uso.Manifest):
-    pass
+def __exnode_init(self, data=None):
+    super(Exnode, self).__init__(data)
+    if isinstance(self.extents, list):
+        extents = []
+        for e in self.extents:
+            ext = Extent(e)
+            extents.append(ext)
+        if len(extents):
+            self.extents = extents
+    
+vars()["Exnode"].__init__ = __exnode_init
+vars()["Extent"].__str__ = __str_location

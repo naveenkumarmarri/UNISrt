@@ -385,7 +385,7 @@ if SCHEMAS_LOCAL:
         try:
             CACHE[SCHEMAS[s]] = json.loads(open(JSON_SCHEMAS_ROOT + "/" + s).read())
         except Exception as e:
-            print("Error loading cached schema for {0}: {1}".formaet(e, s))
+            print("Error loading cached schema for {0}: {1}".format(e, s))
 
 http_client = httplib2.Http(SCHEMA_CACHE_DIR)
 schemaLoader = SchemasHTTPLib2(http_client, cache=CACHE)
@@ -400,4 +400,4 @@ The name of each attribute is taken from the schema 'name' field
 """
 for key, value in SCHEMAS.items():
     cls = schemaLoader.get_class(SCHEMAS[key], extends=None)
-    vars()[cls.__name__] = cls
+    vars()[key] = cls
