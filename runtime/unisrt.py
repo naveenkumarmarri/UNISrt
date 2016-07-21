@@ -69,12 +69,14 @@ class UNISrt(object):
                 self.pullRuntime(self, self._unis, self._unis.get(resource), resource, False)
 
     def insert(self, resource, sync=False):
-        resource.validate()
+        resource.validate(auto_id=True)
         res_name = RT_OBJECT_MAP[resource._schema_uri]
+        model = resource_classes[res_name]
         res = getattr(self, res_name)
         res.append(resource)
         if sync:
-            self._unis.post(res_name, resource.as_dict())
+            return model(self._unis.post(res_name, resource.as_dict()))
+        return resource
     
     def delete(self, resource, sync=False):
         pass

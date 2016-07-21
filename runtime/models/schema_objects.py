@@ -290,9 +290,33 @@ class JSONSchemaModel(ObjectDict):
             if prop_name and original_type != type(value):
                 self._set_property(prop_name, value)
         return value
+
+    def get_href(self, name=None):
+        if name:
+            return {"href": "#/{0}/1".format(name),
+                    "rel": "full"}
+        elif self.id:
+            return {"href": "#/{0}".format(self.id),
+                    "rel": "full"}
+        else:
+            return {"href": "#/1",
+                    "rel" : "full"}
     
-    def validate(self):
-        jsonschema.validate(self, self._schema_data, resolver=self._resolver)
+    def validate(self, auto_id=False):
+        exc = None
+        set_id = False
+        if auto_id and self.id is None:
+            self.id = "validate_id"
+            set_id = True
+        try:
+            jsonschema.validate(self, self._schema_data, resolver=self._resolver)
+        except Exception as e:
+            exc = e
+        if set_id:
+            self.id = None
+        if exc:
+            raise exc
+        return True
         
     def serialize(self):
         return json.dumps(self)
