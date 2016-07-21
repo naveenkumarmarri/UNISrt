@@ -4,7 +4,7 @@ from copy import deepcopy
 from websocket import create_connection
 from collections import defaultdict
 
-import settings
+import runtime.settings as settings
 import runtime.models.runtime_objects as rto
 from runtime.rest.unis_client import UnisClient
 from runtime.utils import *
@@ -44,7 +44,7 @@ class UNISrt(object):
     will maintain it consistent in a best-effort manner).
     '''
     
-    def __init__(self):
+    def __init__(self, init_unis=True):
         logger.info("starting UNIS Network Runtime Environment...")
         fconf = get_file_config(settings.CONFIGFILE)
         self.conf = deepcopy(settings.STANDALONE_DEFAULTS)
@@ -62,10 +62,11 @@ class UNISrt(object):
         self._def_indexes = ["id"]
         for resource in self._resources:
             setattr(self, resource, RTResource(self._def_indexes))
-        
-        # construct the hierarchical representation of the network
-        for resource in self._resources:
-            self.pullRuntime(self, self._unis, self._unis.get(resource), resource, False)
+
+        if init_unis:
+            # construct the hierarchical representation of the network
+            for resource in self._resources:
+                self.pullRuntime(self, self._unis, self._unis.get(resource), resource, False)
 
     def insert(self, resource, sync=False):
         resource.validate()

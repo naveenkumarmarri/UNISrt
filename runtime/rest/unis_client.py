@@ -4,7 +4,7 @@ import re
 import requests
 import ssl
 import websocket
-from settings import SCHEMAS, MIME, get_logger
+from runtime.settings import SCHEMAS, MIME, get_logger
 
 log = get_logger('unis_client')
 

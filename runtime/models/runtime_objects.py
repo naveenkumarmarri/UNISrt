@@ -1,5 +1,5 @@
 import inspect
-from settings import SCHEMAS
+from runtime.settings import SCHEMAS
 from . import schema_objects as uso
 
 """
@@ -36,6 +36,8 @@ def __exnode_init(self, data=None):
             extents.append(ext)
         if len(extents):
             self.extents = extents
+    else:
+        self.extents = list()
     
 vars()["Exnode"].__init__ = __exnode_init
 vars()["Extent"].__str__ = __str_location

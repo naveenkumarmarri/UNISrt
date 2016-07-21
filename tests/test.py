@@ -5,7 +5,7 @@ from runtime.models import Node, Exnode, Extent
 from runtime.unisrt import UNISrt
 import uuid
 
-rt = UNISrt()
+rt = UNISrt(init_unis=False)
 
 myid = str(uuid.uuid4())
 

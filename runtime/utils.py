@@ -4,7 +4,7 @@ to "system calls" of the network
 '''
 import random, string
 import json, uuid
-import settings
+import runtime.settings as settings
 #from pytrie import StringTrie as trie
 
 logger = settings.get_logger('unisrt')

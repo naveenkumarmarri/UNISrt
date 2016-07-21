@@ -6,7 +6,7 @@ import importlib
 import jsonschema
 import httplib2
 
-from settings import SCHEMAS, JSON_SCHEMA_SCHEMA, JSON_SCHEMA_HYPER, \
+from runtime.settings import SCHEMAS, JSON_SCHEMA_SCHEMA, JSON_SCHEMA_HYPER, \
     JSON_SCHEMA_LINKS, JSON_SCHEMAS_ROOT, SCHEMAS_LOCAL, SCHEMA_CACHE_DIR
 
 # Define the default JSON Schemas that are defined in the JSON schema RFC
