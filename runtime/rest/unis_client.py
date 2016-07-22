@@ -18,10 +18,11 @@ class UnisClient(object):
         self._verify = kwargs.get("verify", False)
         self._ssl = kwargs.get("cert", None)
     
-    def getResources(self):
+    def getResources(self, absurl=None):
         headers = { 'content-type': 'application/perfsonar+json',
                     'accept': MIME['PSJSON'] }
-        return self._check_response(requests.get(self._url, verify = self._verify, cert = self._ssl))
+        url = absurl if absurl else self._url
+        return self._check_response(requests.get(url, verify = self._verify, cert = self._ssl))
         
     def get(self, url):
         args = self._get_conn_args(url)

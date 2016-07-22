@@ -84,6 +84,12 @@ class UNISrt(object):
     def update(self, resource, sync=False):
         pass
 
+    def load(self, url):
+        json = self._unis.getResources(url)
+        res_name = RT_OBJECT_MAP[json["$schema"]]
+        model = resource_classes[res_name]
+        return model(json)
+    
     def pullRuntime(self, mainrt, currentclient, data, resource_name, localnew):
         '''
         this function should convert the input data into Python runtime objects
