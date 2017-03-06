@@ -4,17 +4,17 @@ import cmd
 import sys
 import threading
 import pkgutil
-from graph_tool.all import Graph, graph_draw
+import networkx as nx
 
-import kernel.unisrt
+from kernel import unisrt
 from libnre.utils import *
+
+from unis import Runtime
 
 class NREShell(cmd.Cmd):
     
     def __init__(self):
-        # before I could ever implement the runtime environment as a separate
-        # stand alone daemon, it'd be an object of the shell
-        self.unisrt = kernel.unisrt.UNISrt()        
+        self.unisrt = Runtime("http://unis.crest.iu.edu:8888")        
         
         self.prompt = '> '
         cmd.Cmd.__init__(self)

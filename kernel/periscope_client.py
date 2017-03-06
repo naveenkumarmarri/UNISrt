@@ -3,7 +3,10 @@ import json
 import settings
 import re
 
-logger = settings.get_logger('periscope_client')
+import logging
+import logging.handlers
+
+logger = logging.getLogger('periscope_client')
 
 class PeriscopeClient:
     def __init__(self, service_entry, url):

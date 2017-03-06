@@ -1,7 +1,10 @@
 import settings
-from periscope_client import PeriscopeClient
+import logging
+import logging.handlers
 
-logger = settings.get_logger('unis_client')
+from kernel.periscope_client import PeriscopeClient
+
+logger = logging.getLogger('unis_client')
 
 class UNISInstance:
     def __init__(self, service):

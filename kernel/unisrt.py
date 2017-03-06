@@ -1,14 +1,14 @@
 import threading
 import validictory
+import networkx as nx
 from time import time
 from copy import deepcopy
-from graph_tool.all import Graph
 from websocket import create_connection
 
-import unis_client
+from kernel.unis_client import *
 import settings as nre_settings
-from schema_cache import SchemaCache
-from models import *
+from kernel.schema_cache import SchemaCache
+from kernel.models import *
 from libnre.utils import *
 
 logger = nre_settings.get_logger('unisrt')
@@ -69,7 +69,7 @@ class UNISrt(object):
             self.pullRuntime(self, self._unis, self._unis.get(resource), resource, False)
         
         # construct the graph representation of the network, of which this NRE is in charge
-        self.g = Graph()
+        self.g = nx.Graph()
         self.nodebook = {}
         for key in self.nodes['existing'].keys():
             self.nodebook[key] = self.g.add_vertex()
