@@ -1,5 +1,5 @@
-from graph_tool.all import Vertex, Graph
 import sys
+import networkx as nx
 
 def coloring(graph, vprop_order, vprop_color):
     max_color = 0
@@ -76,7 +76,7 @@ def construct_graph(tasks):
     input: a dictionary whose keys are src-dst pairs (a.k.a measurement events), values are required resource
     output: the intersection graph
     '''
-    ug = Graph(directed = False)
+    ug = nx.Graph(directed = False)
     # orders kept in vertex_index, iterator, list() and vertices()
     add_vertex_result = ug.add_vertex(len(tasks))
     if isinstance(add_vertex_result, Vertex):
@@ -99,7 +99,7 @@ def construct_graph(tasks):
 
 def main():
     # We start with an empty, undirected graph
-    ug = Graph(directed = False)
+    ug = nx.Graph(directed = False)
     
     vlist = list(ug.add_vertex(12))
     
