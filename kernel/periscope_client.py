@@ -2,6 +2,7 @@ import http
 import json
 import settings
 import re
+import requests
 
 import logging
 import logging.handlers
@@ -15,6 +16,7 @@ class PeriscopeClient:
         self.url = url
 
     def do_req(self, rtype, url, data=None, headers=None):
+        r = 0
         config = self.config
         url, schema, dheaders = self._url_schema_headers(url)
         headers = dheaders if not headers else headers
@@ -25,12 +27,21 @@ class PeriscopeClient:
                 loc = "parameters" if url.count('/metadata') else "properties"
                 self._add_gemini_auth(data, loc)
         if config.get("use_ssl", None):
-            r = http.make_request(rtype, url, headers, json.dumps(data),
+            if rtype=='post':
+            	r = requests.post(url, headers, json.dumps(data),
+                                  config.get('ssl_cert', None), config.get('ssl_key', None),
+                                  config['ssl_cafile'])
+
+            elif rtype=='put':
+            	r = requests.put(url, headers, json.dumps(data),
                                   config.get('ssl_cert', None), config.get('ssl_key', None),
                                   config['ssl_cafile'])
         else:
-            r = http.make_request(rtype, url, headers, json.dumps(data))
-        try:
+            if rtype=='post':
+            	r = requests.post(url, headers, json.dumps(data))
+            elif rtype=='put':
+                r = requests.put(url, headers, json.dumps(data))
+       	try:
             return json.loads(r)
         except ValueError:
             return r

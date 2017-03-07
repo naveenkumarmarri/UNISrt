@@ -51,7 +51,7 @@ class UNISrt(object):
         
         self.unis_url = str(self.conf['properties']['configurations']['unis_url'])
         self.ms_url = str(self.conf['properties']['configurations']['ms_url'])
-        self._unis = unis_client.UNISInstance(self.conf)
+        self._unis = UNISInstance(self.conf)
         self.time_origin = int(time())
         
         self._schemas = SchemaCache()
@@ -74,7 +74,7 @@ class UNISrt(object):
         for key in self.nodes['existing'].keys():
             self.nodebook[key] = self.g.add_vertex()
         
-        for key, link in self.links['existing'].iteritems():
+        for key, link in iter(self.links['existing'].items()):
             if hasattr(link, 'src') and hasattr(link, 'dst'):
                 self.g.add_edge(self.nodebook[link.src.node.selfRef],\
                                 self.nodebook[link.dst.node.selfRef], add_missing=False)

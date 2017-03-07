@@ -56,7 +56,7 @@ def merge_dicts(base, overriding):
     dictionaries), preferring values from 'overriding' when there are
     colliding keys
     '''
-    for k,v in overriding.iteritems():
+    for k,v in iter(overriding.items()):
         if isinstance(v, dict):
             merge_dicts(base.setdefault(k, {}), v)
         else:

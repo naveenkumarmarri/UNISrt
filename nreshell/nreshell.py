@@ -5,6 +5,8 @@ import sys
 import threading
 import pkgutil
 import networkx as nx
+import matplotlib.pyplot as plt
+from networkx.drawing.nx_agraph import graphviz_layout
 
 from kernel import unisrt
 from libnre.utils import *
@@ -14,7 +16,7 @@ from unis import Runtime
 class NREShell(cmd.Cmd):
     
     def __init__(self):
-        self.unisrt = Runtime("http://unis.crest.iu.edu:8888")        
+        self.unisrt = unisrt.UNISrt()  
         
         self.prompt = '> '
         cmd.Cmd.__init__(self)
@@ -42,18 +44,21 @@ class NREShell(cmd.Cmd):
         print("List of applications:")
         for _, app, _  in pkgutil.iter_modules(['apps']):
             print(app)
-            
+
     def do_dt(self, layer):
         '''
         draw topology of certain layer, L2 by default
         Usage: dt <layer number>
         '''
         if not layer or int(layer) == 2:
-            graph_draw(self.unisrt.g)
+            pos = nx.nx_pydot.graphviz_layout(self.unisrt.g)
+            nx.draw(self.unisrt.g, pos)
+            plt.savefig('graph.png')
+            plt.show()
         elif int(layer) == 3:
             # prepare a layer 3 graph and then draw it
             # the graph could be constructed in advance
-            g = Graph()
+            g = nx.Graph()
             nodebook = {}
             tmp = self.unisrt.ipports['existing'].values()
             for index1, ipp1 in enumerate(tmp):
@@ -68,7 +73,7 @@ class NREShell(cmd.Cmd):
                         g.add_edge(nodebook[ipp2.node.selfRef], nodebook[ipp1.node.selfRef], add_missing=False)
                         tmp.pop(index2)
                         
-            graph_draw(g)
+            nx.draw(g)
         else:
             print("only draw layer 2 or 3")
         
@@ -94,7 +99,7 @@ class NREShell(cmd.Cmd):
         start a nre service in the service package -- shouldn't be exactly the same as running an app
         '''
         args = args.split(',')
-        args = map(lambda x: x.replace(' ', ''), args)
+        args = list(map(lambda x: x.replace(' ', ''), args))
         full_name = 'services.' + args[0] + '.' + args[0]
         app = __import__(full_name, fromlist = ['service'])
         
