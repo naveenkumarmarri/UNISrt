@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 import re
 import pytz
-import datetime, dateutil.parser
+import datetime
+import dateutil.parser
+import networkx as nx
+import matplotlib.pyplot as plt
+import numpy as np
 
 import services.scheduler.schedalgorithms.adaptive as adaptive
 import services.scheduler.schedalgorithms.graphcoloring as coloring
@@ -103,7 +107,7 @@ class Scheduler(object):
             add_measuring_task(meas, new_tasks)
         
         # register measurements back to their resources
-        for meas, resources in new_tasks.iteritems():
+        for meas, resources in new_tasks.items():
             for res in resources:
                 res.stressed_measurements.add(meas)
         
@@ -111,32 +115,31 @@ class Scheduler(object):
         ug, vprop_name = coloring.construct_graph(new_tasks)
         
         # start the coloring algorithm
-        vprop_order = [None] * ug.num_vertices()
-        vprop_degree = ug.degree_property_map('total')
-        vprop_marked = ug.new_vertex_property('int')
-        bucketSorter = [[] for _ in range(ug.num_vertices())]
-        coloring.smallest_last_vertex_ordering(ug, vprop_order, vprop_degree, vprop_marked, bucketSorter)
+        vprop_order = [None] * len(ug.node)
+        vprop_degree = nx.degree(ug)
+        bucketSorter = [[] for _ in range(len(ug.node))]
+        coloring.smallest_last_vertex_ordering(ug, vprop_order, vprop_degree, bucketSorter)
 
-        vprop_color = ug.new_vertex_property('int')
+        vprop_color = {}
         coloring.coloring(ug, vprop_order, vprop_color)
-        
-        '''
+               
         for i, v in enumerate(vprop_order):
-            print 'order: ' + str(i) + ' name: ' + vprop_name[v] + ' color: ' + str(vprop_color[v]) + ' degree: ' + str(v.out_degree())
-        from graph_tool.draw import graph_draw
-        graph_draw(ug, vertex_fill_color = vprop_color)
-        '''
+            print('order: ' + str(i) + ' name: ' + str(vprop_name[v]) + ' color: ' + str(vprop_color[v]))
+        nx.draw_networkx(ug)
+        plt.draw()
+        plt.savefig('graph.png')
+        plt.show()
         
         # map back to time domain
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc)
         now += datetime.timedelta(seconds = 600) # estimated safety time gap before BLiPP reads its schedule
-        now = pytz.utc.localize(now)
+        # now = pytz.utc.localize(now)
         schedules = {}
         duration = schedule_params['duration']
-        vlist = ug.vertices()
+        vlist = ug.nodes()
         for meas, path in new_tasks.items():
             # TODO: need to make sure the order of the iterators remains consistent
-            v = vlist.next()
+            v = vlist.pop(0)
             offset = duration * vprop_color[v]
             for repeat in range(schedule_params['num_tests']):
                 round_offset = repeat * schedule_params['every']
@@ -180,8 +183,8 @@ def run(unisrt, kwargs):
     scheduler = Scheduler(unisrt)
     setattr(unisrt, 'scheduler', scheduler)
     
-    '''
     scheduler.schedule(*prep_test(1, unisrt))
+    '''
     scheduler.schedule(*prep_test(2, unisrt))
     scheduler.schedule(*prep_test(3, unisrt))
     scheduler.schedule(*prep_test(4, unisrt))
@@ -459,24 +462,24 @@ def prep_test(tmp, unisrt):
         }
         from kernel.models import measurement
         if tmp == 1:
-            port(test_port1, unisrt, False)
-            port(test_port2, unisrt, False)
-            port(test_port3, unisrt, False)
-            port(test_port4, unisrt, False)
-            port(test_port5, unisrt, False)
-            port(test_port6, unisrt, False)
+            port(test_port1, unisrt, None, False)
+            port(test_port2, unisrt, None, False)
+            port(test_port3, unisrt, None, False)
+            port(test_port4, unisrt, None, False)
+            port(test_port5, unisrt, None, False)
+            port(test_port6, unisrt, None, False)
             
-            path(test_path1, unisrt, False)
-            path(test_path2, unisrt, False)
-            path(test_path3, unisrt, False)
-            path(test_path4, unisrt, False)
+            path(test_path1, unisrt, None, False)
+            path(test_path2, unisrt, None, False)
+            path(test_path3, unisrt, None, False)
+            path(test_path4, unisrt, None, False)
             
-            measurements = [measurement(test_measurement1, unisrt, True)]
+            measurements = [measurement(test_measurement1, unisrt, None, True)]
         elif tmp == 2:
-            measurements = [measurement(test_measurement2, unisrt, True)]
+            measurements = [measurement(test_measurement2, unisrt, None, True)]
         elif tmp == 3:
-            measurements = [measurement(test_measurement3, unisrt, True)]
+            measurements = [measurement(test_measurement3, unisrt, None, True)]
         elif tmp == 4:
-            measurements = [measurement(test_measurement4, unisrt, True)]
+            measurements = [measurement(test_measurement4, unisrt, None, True)]
     
         return [measurements, {'every': 120, 'duration': 10, 'num_tests': 1}]

@@ -598,18 +598,9 @@ class path(NetworkResource):
         '''
         super(path, self).__init__(data, unisrt, currentclient, localnew)
         self.status = data['status']
-        
-        
-        
-        
-        
+         
         if 'links' in data:
             self.links = data['links']
-        
-        
-        
-        
-        
         
         if 'ports' in data:
             self._ports = data['ports']
@@ -625,10 +616,10 @@ class path(NetworkResource):
         
         try:
             # bottom line, we should be able to fill the end-to-end info
-            self._ends = [filter(lambda p: ('ipv4' in p.data['properties'] and p.data['properties']['ipv4']['address'] == data['src']),\
-                                 unisrt.ports['existing'].values())[0],\
-                             filter(lambda p: ('ipv4' in p.data['properties'] and p.data['properties']['ipv4']['address'] == data['dst']),\
-                                    unisrt.ports['existing'].values())[0]]
+            self._ends = [list(filter(lambda p: ('ipv4' in p.data['properties'] and p.data['properties']['ipv4']['address'] == data['src']),\
+                                 unisrt.ports['existing'].values()))[0],\
+                             list(filter(lambda p: ('ipv4' in p.data['properties'] and p.data['properties']['ipv4']['address'] == data['dst']),\
+                                    unisrt.ports['existing'].values()))[0]]
         except IndexError:
             self._ends = []
             

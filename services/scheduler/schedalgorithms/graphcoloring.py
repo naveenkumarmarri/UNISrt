@@ -3,17 +3,17 @@ import networkx as nx
 
 def coloring(graph, vprop_order, vprop_color):
     max_color = 0
-    V = graph.num_vertices()
-    mark = [sys.maxint] * V
+    V = len(graph.nodes())
+    mark = {}
     
-    for v in graph.vertices():
+    for v in graph.nodes():
         vprop_color[v] = V - 1 # which means "not colored"
         
     for i in range(V):
         current = vprop_order[i]
         
         # mark all the colors of the adjacent vertices
-        for neighbour in current.all_neighbours():
+        for neighbour in nx.all_neighbors(graph, current):
             mark[vprop_color[neighbour]] = i
             
         # find the smallest color unused by the adjacent vertices
@@ -29,12 +29,12 @@ def coloring(graph, vprop_order, vprop_color):
         
     return max_color
 
-def smallest_last_vertex_ordering(graph, vprop_order, vprop_degree, vprop_marker, degree_buckets):
-    num = graph.num_vertices()
+def smallest_last_vertex_ordering(graph, vprop_order, vprop_degree, degree_buckets):
+    num = len(graph.node)
 
-    for v in graph.vertices():
-        vprop_marker[v] = num
-        vprop_degree[v] = degree = v.out_degree()
+    for v in graph.nodes():
+        graph.node[v]["marked"] = num
+        degree = vprop_degree[v]
         degree_buckets[degree].append(v)
 
     minimum_degree = 0
@@ -76,32 +76,22 @@ def construct_graph(tasks):
     input: a dictionary whose keys are src-dst pairs (a.k.a measurement events), values are required resource
     output: the intersection graph
     '''
-    ug = nx.Graph(directed = False)
-    # orders kept in vertex_index, iterator, list() and vertices()
-    add_vertex_result = ug.add_vertex(len(tasks))
-    if isinstance(add_vertex_result, Vertex):
-        vlist = list([add_vertex_result])
-    else:
-        vlist = list(add_vertex_result)
-    
-    vprop_name = ug.new_vertex_property('object')
-    
-    # O(n^2)
-    # let xth vertex represent the xth measurement pair
-    meas = tasks.keys()
-    for i, p in enumerate(meas):
-        vprop_name[vlist[i]] = p
-        for j, q in enumerate(meas[i + 1 :], start = i + 1):
+    ug = nx.Graph()
+    vprop_name = {}
+    for i, p in enumerate(tasks.keys()):        
+        ug.add_node(i, name=p, uid=i, marked=0)
+        vprop_name[i] = p
+        for j, q in enumerate(list(tasks.keys())[i + 1 :], start = i + 1):
             if set(tasks[p]) & set(tasks[q]):
-                ug.add_edge(vlist[i], vlist[j])
-            
+                ug.add_edge(i, j)
+
     return ug, vprop_name
 
 def main():
     # We start with an empty, undirected graph
     ug = nx.Graph(directed = False)
     
-    vlist = list(ug.add_vertex(12))
+    vlist = list(ug.add_node(12))
     
     ug.add_edge(vlist[0], vlist[1])
     ug.add_edge(vlist[1], vlist[2])
@@ -122,9 +112,8 @@ def main():
     
     vprop_order = [None] * ug.num_vertices()
     vprop_degree = ug.degree_property_map('total')
-    vprop_marked = ug.new_vertex_property('int')
     bucketSorter = [[] for _ in range(ug.num_vertices())]
-    smallest_last_vertex_ordering(ug, vprop_order, vprop_degree, vprop_marked, bucketSorter)
+    smallest_last_vertex_ordering(ug, vprop_order, vprop_degree, bucketSorter)
     
     vprop_color = ug.new_vertex_property('int')
     coloring(ug, vprop_order, vprop_color)
