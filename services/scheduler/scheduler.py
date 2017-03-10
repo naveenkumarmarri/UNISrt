@@ -112,20 +112,16 @@ class Scheduler(object):
                 res.stressed_measurements.add(meas)
         
         # construct the intersection graph of this run
-        ug, vprop_name = coloring.construct_graph(new_tasks)
+        ug = coloring.construct_graph(new_tasks)
         
         # start the coloring algorithm
-        vprop_order = [None] * len(ug.node)
-        vprop_degree = nx.degree(ug)
-        bucketSorter = [[] for _ in range(len(ug.node))]
-        coloring.smallest_last_vertex_ordering(ug, vprop_order, vprop_degree, bucketSorter)
-
-        vprop_color = {}
-        coloring.coloring(ug, vprop_order, vprop_color)
-               
-        for i, v in enumerate(vprop_order):
-            print('order: ' + str(i) + ' name: ' + str(vprop_name[v]) + ' color: ' + str(vprop_color[v]))
-        nx.draw_networkx(ug)
+        order = coloring.smallest_last_vertex_ordering(ug)
+        
+        colors = coloring.coloring(ug, vprop_order)
+        
+        for i, v in enumerate(order):
+            print('order: ' + str(i) + ' name: ' + str(vprop_name[v]) + ' color: ' + str(colors[v]))
+        nx.draw_networkx(ug, node_color=colors)
         plt.draw()
         plt.savefig('graph.png')
         plt.show()
@@ -140,7 +136,7 @@ class Scheduler(object):
         for meas, path in new_tasks.items():
             # TODO: need to make sure the order of the iterators remains consistent
             v = vlist.pop(0)
-            offset = duration * vprop_color[v]
+            offset = duration * colors[v]
             for repeat in range(schedule_params['num_tests']):
                 round_offset = repeat * schedule_params['every']
                 s = now + datetime.timedelta(seconds = offset) + datetime.timedelta(seconds = round_offset)

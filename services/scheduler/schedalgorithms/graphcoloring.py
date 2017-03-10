@@ -1,75 +1,122 @@
 import sys
 import networkx as nx
 
-def coloring(graph, vprop_order, vprop_color):
+def coloring(graph, order):
     max_color = 0
     V = len(graph.nodes())
-    mark = {}
+    saturations = []
     
     for v in graph.nodes():
-        vprop_color[v] = V - 1 # which means "not colored"
+        colors[v] = V # which means "not colored"
         
     for i in range(V):
-        current = vprop_order[i]
+        current = order[i]
+        color = 0
+        if current in saturations:
+            while color in saturations[current]:
+                color += 1
         
-        # mark all the colors of the adjacent vertices
-        for neighbour in nx.all_neighbors(graph, current):
-            mark[vprop_color[neighbour]] = i
-            
-        # find the smallest color unused by the adjacent vertices
-        smallest_color = 0
-        while smallest_color < max_color and mark[smallest_color] == i:
-            smallest_color += 1
-
-        # if all the colors are used up, increase the number of colors
-        if smallest_color == max_color:
-            max_color += 1
-
-        vprop_color[current] = smallest_color
+        colors[current] = color
+        max_color = max(max_color, color)
+        for neighbor in nx.all_neighbors(graph, current):
+            if neighbor not in saturations:
+                saturations[neighbor] = []
+            saturations[neighbor].append(color)
         
-    return max_color
+        ## mark all the colors of the adjacent vertices
+        #for neighbour in nx.all_neighbors(graph, current):
+        #    mark[color[neighbour]] = i
+        #    
+        ## find the smallest color unused by the adjacent vertices
+        #smallest_color = 0
+        #while smallest_color < max_color and mark[smallest_color] == i:
+        #    smallest_color += 1
+        #
+        ## if all the colors are used up, increase the number of colors
+        #if smallest_color == max_color:
+        #    max_color += 1
+        #
+        #vprop_color[current] = smallest_color
+        
+    return colors
 
-def smallest_last_vertex_ordering(graph, vprop_order, vprop_degree, degree_buckets):
+def smallest_last_vertex_ordering(graph):
+    order = []
+    buckets = {}
+    degrees = nx.degree(graph)
     num = len(graph.node)
 
-    for v in graph.nodes():
-        graph.node[v]["marked"] = num
-        degree = vprop_degree[v]
-        degree_buckets[degree].append(v)
+    for n in graph.nodes():
+        degree = degrees[n]
+        if degree not in buckets:
+            buckets[degree] = []
+        buckets[degree].append(n)
 
     minimum_degree = 0
     current_order = num - 1
 
     while True:
-        minimum_degree_stack = degree_buckets[minimum_degree]
-        while not minimum_degree_stack:
+        n = None
+        try:
+            n = buckets[minimum_degree].pop()
+        if not n:
             minimum_degree += 1
-            minimum_degree_stack = degree_buckets[minimum_degree]
-            
-        node = minimum_degree_stack.pop()
-        vprop_order[current_order] = node
+            continue
+        
+        order[current_order] = n
         
         if current_order == 0:
             break
-
-        vprop_marker[node] = 0
-        
-        for neighbour in node.all_neighbours():
-            if vprop_marker[neighbour] > current_order:
-                vprop_marker[neighbour] = current_order
-
-                # delete v from the bucket sorter
-                degree_buckets[vprop_degree[neighbour]].remove(neighbour)
-
-                # it is possible minimum degree goes down, so we keep tracking it.
-                # but, it is not 100% "smallest last"
-                vprop_degree[neighbour] = vprop_degree[neighbour] - 1
-                minimum_degree = min(minimum_degree, vprop_degree[neighbour])
-
-                # re-insert v in the bucket sorter with the new degree
-                degree_buckets[vprop_degree[neighbour]].append(neighbour)
             
+        graph.node[n]["marked"] = 0
+        
+        for neighbor in nx.all_neighbors(graph, n):
+            if graph.node[neighbor]["marked"] > current_order:
+                graph.node[n]["marked"] = current_order
+                
+                # delete neighbor from bucket
+                buckets[degree[neighbor]].remove(neighbor)
+                
+                degree[neighbor] = degree[neighbor] - 1
+                minimum_degree = min(minimum_degree, degree[neighbor])
+                
+                # re-insert neighbor into the correct bucket
+                buckets[degree[neighbor]].append(neighbor)
+                
         current_order -= 1
+        
+    return order
+        
+        
+        #minimum_degree_stack = degree_buckets[minimum_degree]
+        #while not minimum_degree_stack:
+        #    minimum_degree += 1
+        #    minimum_degree_stack = degree_buckets[minimum_degree]
+        #    
+        #node = minimum_degree_stack.pop()
+        #vprop_order[current_order] = node
+        #
+        #if current_order == 0:
+        #    break
+        #
+        #vprop_marker[node] = 0
+        #
+        #for neighbour in node.all_neighbours():
+        #    if vprop_marker[neighbour] > current_order:
+        #        vprop_marker[neighbour] = current_order
+        #
+        #        # delete v from the bucket sorter
+        #        degree_buckets[vprop_degree[neighbour]].remove(neighbour)
+        #
+        #        # it is possible minimum degree goes down, so we keep tracking it.
+        #        # but, it is not 100% "smallest last"
+        #        vprop_degree[neighbour] = vprop_degree[neighbour] - 1
+        #        minimum_degree = min(minimum_degree, vprop_degree[neighbour])
+        #
+        #        # re-insert v in the bucket sorter with the new degree
+        #        degree_buckets[vprop_degree[neighbour]].append(neighbour)
+        #    
+        #current_order -= 1
         
 def construct_graph(tasks):
     '''
@@ -78,14 +125,19 @@ def construct_graph(tasks):
     '''
     ug = nx.Graph()
     vprop_name = {}
-    for i, p in enumerate(tasks.keys()):        
-        ug.add_node(i, name=p, uid=i, marked=0)
+    for i, p in enumerate(tasks.keys()):
+        properties = {
+            "measurement": p,
+            "marked": len(tasks),
+            "color": -1
+        }
+        ug.add_node(i, **properties)
         vprop_name[i] = p
         for j, q in enumerate(list(tasks.keys())[i + 1 :], start = i + 1):
             if set(tasks[p]) & set(tasks[q]):
                 ug.add_edge(i, j)
 
-    return ug, vprop_name
+    return ug
 
 def main():
     # We start with an empty, undirected graph
