@@ -29,14 +29,12 @@ def get_file_config(filepath):
             conf = f.read()
             return json.loads(conf)
     except IOError as e:
-        logger.exc('get_file_config', e)
-        logger.error('get_file_config',
-                     msg="Could not open config file... exiting")
+        #logger.exception('get_file_config', e)
+        logger.error("Could not open config file... exiting")
         exit(1)
     except ValueError as e:
-        logger.exc('get_file_config', e)
-        logger.error('get_file_config',
-                     msg="Config file is not valid json... exiting")
+        #logger.exc('get_file_config', e)
+        logger.error(msg="Config file is not valid json... exiting")
         exit(1)
 
 def add_defaults(data, schema):

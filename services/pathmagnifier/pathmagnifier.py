@@ -233,11 +233,11 @@ def getResourceLists(unisrt, ends, obj_class, obj_layer='l3'):
                     unisrt.ports['existing']['selfRef'][s].usecounter += 1
                     unisrt.ports['existing']['selfRef'][d].usecounter += 1
                 except KeyError as e:
-                    print e
+                    print(e)
         elif ntwkrsrc in unisrt.ipports['existing']:
             unisrt.ipports['existing'][ntwkrsrc].usecounter += 1
         else:
-            print ntwkrsrc + " cannot be found in UNISrt"
+            print(ntwkrsrc + " cannot be found in UNISrt")
     
     def vtraceroute(src, dst):
         '''
@@ -314,7 +314,7 @@ def getResourceLists(unisrt, ends, obj_class, obj_layer='l3'):
             # 3. consult soft forwarding tables if just nodes
             hops = vtraceroute(ends[0], ends[-1])
         else:
-            print "ERROR: run out of ideas resolving the hops"
+            print("ERROR: run out of ideas resolving the hops")
             return None
     
     if obj_layer == 'l3':

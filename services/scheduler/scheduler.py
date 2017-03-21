@@ -92,9 +92,9 @@ class Scheduler(object):
                 # if the paths object has not been constructed by the pathfinder service, this exception has to
                 # make up some on the fly
                 task_set[meas] = [filter(lambda p: ('ipv4' in p.data['properties'] and p.data['properties']['ipv4']['address'] == meas.src),\
-                                 self.unisrt.ports['existing'].values())[0],\
-                             filter(lambda p: ('ipv4' in p.data['properties'] and p.data['properties']['ipv4']['address'] == meas.dst),\
-                                    self.unisrt.ports['existing'].values())[0]]
+                                         self.unisrt.ports['existing'].values())[0],\
+                                  filter(lambda p: ('ipv4' in p.data['properties'] and p.data['properties']['ipv4']['address'] == meas.dst),\
+                                         self.unisrt.ports['existing'].values())[0]]
                 
             # recursive, cascading add interfered measurements
             for res in task_set[meas]:#self.unisrt.paths['existing'][(meas.src, meas.dst)]['main'].get_bottom():
@@ -116,12 +116,11 @@ class Scheduler(object):
         
         # start the coloring algorithm
         order = coloring.smallest_last_vertex_ordering(ug)
+        coloring.coloring(ug, order)
         
-        colors = coloring.coloring(ug, vprop_order)
-        
-        for i, v in enumerate(order):
-            print('order: ' + str(i) + ' name: ' + str(vprop_name[v]) + ' color: ' + str(colors[v]))
-        nx.draw_networkx(ug, node_color=colors)
+        for i, n in enumerate(order):
+            print("order: {} name: {} color: {}".format(i, n, ug.node[n]['color']))
+        nx.draw(ug, pos=nx.spring_layout(ug))
         plt.draw()
         plt.savefig('graph.png')
         plt.show()
@@ -132,16 +131,13 @@ class Scheduler(object):
         # now = pytz.utc.localize(now)
         schedules = {}
         duration = schedule_params['duration']
-        vlist = ug.nodes()
-        for meas, path in new_tasks.items():
-            # TODO: need to make sure the order of the iterators remains consistent
-            v = vlist.pop(0)
-            offset = duration * colors[v]
+        for n, kwargs in ug.nodes(data=True):
+            offset = duration * kwargs['color']
             for repeat in range(schedule_params['num_tests']):
                 round_offset = repeat * schedule_params['every']
                 s = now + datetime.timedelta(seconds = offset) + datetime.timedelta(seconds = round_offset)
                 e = s + datetime.timedelta(seconds = duration)
-                schedules.setdefault(meas.id, []).append({"start": adaptive.datetime_to_dtstring(s), "end": adaptive.datetime_to_dtstring(e)})
+                schedules.setdefault(kwargs['measurement'].id, []).append({"start": adaptive.datetime_to_dtstring(s), "end": adaptive.datetime_to_dtstring(e)})
         
         # assign schedules
         for meas in measurements:

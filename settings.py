@@ -2,7 +2,7 @@ import logging
 import socket
 
 HOSTNAME = socket.gethostname() ### this needs to get the fqdn for DOMAIN to be right down below
-CONFIGFILE = "/root/UNISrt/kernel/nre.conf"
+CONFIGFILE = "/home/jemusser/crest/UNISrt/kernel/nre.conf"
 
 SCHEMAS = {
     'networkresources': 'http://unis.crest.iu.edu/schema/20160630/networkresource#',
