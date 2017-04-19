@@ -176,5 +176,8 @@ class NREShell(cmd.Cmd):
     def do_EOF(self, args):
         return True
 
-if __name__ == '__main__':
+def main():
     NREShell().cmdloop('Welcome to the UNIS Runtime Environment!')
+
+if __name__ == '__main__':
+    main()
