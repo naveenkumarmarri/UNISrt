@@ -25,16 +25,19 @@ def coloring(graph, order):
     return graph
 
 def smallest_last_vertex_ordering(graph):
+    degree_map = graph.degree()
+    max_degree = max(degree_map)
+    degree = 0
+
     # Check the previous bucket, then return the first element of the
     # first bucket containing elements
     def _nextNode(ls, c):
-        for i in range(c - 1, len(ls)):
+        print(ls, c)
+        for i in range(c - 1, max_degree + 1):
             if ls[i]:
                 return ls[i].pop(), i
     
     buckets = defaultdict(list)
-    degree_map = graph.degree()
-    degree = 0
     order = list(range(len(graph)))
     for n in graph.nodes():
         buckets[degree_map[n]].append(n)
@@ -43,9 +46,11 @@ def smallest_last_vertex_ordering(graph):
         smallest, degree = _nextNode(buckets, degree)
         order[i] = smallest
         for neighbor in graph.neighbors(smallest):
-            buckets[degrees[neighbor]].remove(neighbor)
-            degrees[neighbor] -= 1
-            buckets[degrees[neighbor]].append(neighbor)
+            print(degree_map)
+            if neighbor in buckets[degree_map[neighbor]]:
+                buckets[degree_map[neighbor]].remove(neighbor)
+                degree_map[neighbor] -= 1
+                buckets[degree_map[neighbor]].append(neighbor)
         
     return order
         

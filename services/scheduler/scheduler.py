@@ -176,11 +176,9 @@ def run(unisrt, kwargs):
     setattr(unisrt, 'scheduler', scheduler)
     
     scheduler.schedule(*prep_test(1, unisrt))
-    '''
     scheduler.schedule(*prep_test(2, unisrt))
     scheduler.schedule(*prep_test(3, unisrt))
     scheduler.schedule(*prep_test(4, unisrt))
-    '''
     
 def prep_test(tmp, unisrt):
         from kernel.models import port, measurement, path
